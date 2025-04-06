@@ -6,8 +6,6 @@ import torch
 import torch.utils.data as torch_data
 from typing_extensions import TypeAlias
 
-from src import utils
-
 # =============================================================================
 # Dataset
 # =============================================================================
@@ -47,6 +45,8 @@ def init_dataloader(
     fold: int = 0,
     debug: bool = False,
     fulltrain: bool = False,
+    prefetch_factor: int | None = 2,
+    persistent_workers: bool = False,
 ) -> tuple[torch_data.DataLoader, torch_data.DataLoader]:
     if mp.cpu_count() < num_workers:
         num_workers = mp.cpu_count()
@@ -65,37 +65,39 @@ def init_dataloader(
     if debug:
         df_train = df_train.head(100)
         df_valid = df_valid.head(100)
+
+    if fulltrain:
+        df_train = df
+
     # --- Preprocess
 
     # --- Construct Datasets
-    train_ds: torch_data.Dataset[TrainBatch] = MyTrainDataset(df_train)
-    valid_ds: torch_data.Dataset[ValidBatch] = MyValidDataset(df_valid)
+    ds_train: torch_data.Dataset[TrainBatch] = MyTrainDataset(df_train)
+    ds_valid: torch_data.Dataset[ValidBatch] = MyValidDataset(df_valid)
     # --- Construct DataLoaders
-    train_dl = torch_data.DataLoader(
-        dataset=train_ds,
+    dl_train = torch_data.DataLoader(
+        dataset=ds_train,
         batch_size=train_batch_size,
         shuffle=True,
         num_workers=num_workers,
         drop_last=True,
         pin_memory=True,
-        prefetch_factor=2 if num_workers > 0 else None,
-        worker_init_fn=lambda _: utils.seed_everything(42),
-        persistent_workers=True if num_workers > 0 else False,
+        prefetch_factor=prefetch_factor,
+        persistent_workers=persistent_workers,
     )
 
-    valid_loader = torch_data.DataLoader(
-        dataset=valid_ds,
+    dl_valid = torch_data.DataLoader(
+        dataset=ds_valid,
         batch_size=valid_batch_size,
         shuffle=False,
         num_workers=num_workers,
         drop_last=False,
         pin_memory=True if num_workers > 0 else False,
-        prefetch_factor=2 if num_workers > 0 else None,
-        worker_init_fn=lambda _: utils.seed_everything(42),
-        persistent_workers=True if num_workers > 0 else False,
+        prefetch_factor=prefetch_factor,
+        persistent_workers=persistent_workers,
     )
 
-    return train_dl, valid_loader
+    return dl_train, dl_valid
 
 
 def _test_dataloaders() -> None:
@@ -111,17 +113,19 @@ def _test_dataloaders() -> None:
         debug=True,
     )
     print("-- Test Train")
-    for i, batch in enumerate(dl_train):
+    train_batch: TrainBatch
+    for i, train_batch in enumerate(dl_train):
         if i > 3:
             break
-        _key, x, y = batch
+        _key, x, y = train_batch
         print(f"{_key=}, {x.shape=}, {y.shape=}")
 
     print("-- Test Valid")
-    for i, batch in enumerate(dl_valid):
+    valid_batch: ValidBatch
+    for i, valid_batch in enumerate(dl_valid):
         if i > 3:
             break
-        _key, x, y = batch
+        _key, x, y = valid_batch
         print(f"{_key=}, {x.shape=}, {y.shape=}")
 
 
