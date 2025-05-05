@@ -18,4 +18,7 @@
   - 02: store-sales時系列モデル
     - .resample("D"): 漏れがある日付データを連続に埋める
     - .interpolate(): 内挿する
-    - 
+  - 03 play ground 
+    - 100万人
+    - 消費カロリー推定
+  
