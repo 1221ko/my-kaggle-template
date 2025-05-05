@@ -10,13 +10,6 @@ services:
       - "127.0.0.1:9898:9898"
     tty: true
     stdin_open: true
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
     volumes:
       - .:/workspace/working
       - ${HOME}/.ssh:/home/docker/.ssh
